@@ -1,0 +1,50 @@
+.footer {
+  background: linear-gradient(135deg, #fff9fc, #fdeef4);
+  border-top: 2px solid #f8d7e8;
+  padding: 3rem 2rem 1rem;
+  margin-top: 4rem;
+}
+
+.footer-grid {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2.5rem;
+  padding-bottom: 2rem;
+}
+
+.footer-brand { font-size: 1.5rem; font-weight: 900; color: #d97ba6; margin: 0 0 0.75rem; }
+.footer-desc { color: #888; font-size: 0.9rem; line-height: 1.6; margin: 0; }
+.footer-heading { color: #d97ba6; font-weight: 800; margin: 0 0 1rem; font-size: 1rem; }
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.footer-links a {
+  color: #777;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover { color: #d97ba6; }
+
+.payment-icons { display: flex; gap: 0.75rem; font-size: 1.8rem; margin-bottom: 0.75rem; }
+.footer-secure { color: #888; font-size: 0.85rem; font-weight: 600; margin: 0; }
+
+.footer-bottom {
+  border-top: 1px solid #f8d7e8;
+  padding-top: 1.25rem;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.85rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}

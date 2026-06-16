@@ -1,0 +1,35 @@
+.cat-page { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+.cat-header { margin-bottom: 1.5rem; }
+.cat-header h1 { font-size: 2rem; font-weight: 900; color: #222; margin: 0 0 0.5rem; }
+.cat-header p { color: #aaa; margin: 0; }
+
+.cat-tags { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem; }
+
+.cat-tag {
+  text-decoration: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 50px;
+  border: 2px solid #f8d7e8;
+  color: #666;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.cat-tag:hover { border-color: #d97ba6; color: #d97ba6; }
+.cat-tag.active { background: linear-gradient(135deg, #d97ba6, #e91e8c); color: white; border-color: transparent; }
+
+.cat-empty { text-align: center; padding: 4rem; color: #aaa; }
+.cat-empty a { color: #d97ba6; font-weight: 700; text-decoration: none; display: block; margin-top: 1rem; }
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.75rem;
+}
+
+@media (max-width: 768px) {
+  .cat-page { padding: 1.5rem 1rem; }
+  .cat-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+}

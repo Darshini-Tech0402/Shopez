@@ -1,0 +1,118 @@
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 199;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -320px;
+  width: 300px;
+  height: 100vh;
+  background: white;
+  z-index: 200;
+  overflow-y: auto;
+  transition: left 0.3s ease;
+  box-shadow: 4px 0 20px rgba(217,123,166,0.2);
+}
+
+.sidebar.open { left: 0; }
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, #fdeef4, #f8d7e8);
+  border-bottom: 2px solid #f8d7e8;
+}
+
+.sidebar-logo {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #d97ba6;
+}
+
+.sidebar-close {
+  background: white;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #d97ba6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.sidebar-close:hover { background: #d97ba6; color: white; transform: rotate(90deg); }
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #fff9fc;
+  border-bottom: 1px solid #f8d7e8;
+}
+
+.sidebar-avatar { font-size: 2.5rem; }
+.sidebar-username { font-weight: 700; color: #333; margin: 0; font-size: 0.95rem; }
+.sidebar-email { color: #999; margin: 0; font-size: 0.8rem; }
+
+.sidebar-nav { padding: 1rem; }
+
+.sidebar-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #d97ba6;
+  margin: 1.25rem 0 0.5rem 0.5rem;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: #555;
+  text-decoration: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+  transition: all 0.2s;
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar-link:hover { background: #fdeef4; color: #d97ba6; padding-left: 1.4rem; }
+
+.sidebar-badge {
+  background: #e91e8c;
+  color: white;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.sidebar-logout { color: #e91e8c; }
+.sidebar-logout:hover { background: #fdeef4; }
