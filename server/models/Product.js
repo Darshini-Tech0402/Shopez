@@ -114,7 +114,7 @@ const products = [
     category: "Fashion",
     price: 1999,
     originalPrice: 3499,
-    image: "https://images.unsplash.com/photo-1595777712802-46a82f49d3e7?w=500&h=500&fit=crop",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQa6Fas69xMRYEgmpQyFNFiG4wMQlTsIdLGBOby4u6CSQ&s=10",
     description: "Beautiful summer dress with comfortable fabric, perfect for all occasions.",
     rating: 4.7,
     reviews: 342,
