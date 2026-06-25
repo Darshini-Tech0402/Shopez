@@ -1,229 +1,358 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
-import './Checkout.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import {
+  Check, ChevronRight, ShoppingBag,
+  CreditCard, MapPin, Eye, Zap,
+} from "lucide-react";
+import "./Checkout.css";
+
+const steps = ["Shipping", "Payment", "Review"];
 
 const Checkout = () => {
-  const { cart, subtotal, tax, shipping, total, clearCart } = useCart();
+  const { cartItems, cartTotal, clearCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState('cod');
-  const [orderPlaced, setOrderPlaced] = useState(false);
-  const [orderId, setOrderId] = useState('');
 
-  const [form, setForm] = useState({
-    fullName: '', email: '', phone: '', address: '', city: '', state: '', pincode: ''
+  const [step, setStep] = useState(0);
+  const [placing, setPlacing] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+
+  const [shipping, setShipping] = useState({
+    firstName: user?.name?.split(" ")[0] || "",
+    lastName: user?.name?.split(" ")[1] || "",
+    email: user?.email || "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "US",
   });
 
-  const [cardInfo, setCardInfo] = useState({ cardNumber: '', expiry: '', cvv: '' });
-  const [errors, setErrors] = useState({});
+  const [payment, setPayment] = useState({
+    cardNumber: "",
+    cardName: "",
+    expiry: "",
+    cvv: "",
+    showCvv: false,
+  });
 
-  const handleForm = e => setForm({ ...form, [e.target.name]: e.target.value });
-  const handleCard = e => setCardInfo({ ...cardInfo, [e.target.name]: e.target.value });
+  const shipping_fee = cartTotal > 50 ? 0 : 9.99;
+  const tax = cartTotal * 0.08;
+  const total = cartTotal + shipping_fee + tax;
 
-  const validateStep1 = () => {
-    const errs = {};
-    if (!form.fullName.trim()) errs.fullName = 'Full name is required';
-    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Valid email is required';
-    if (!form.phone.trim() || form.phone.length < 10) errs.phone = 'Valid phone number is required';
-    if (!form.address.trim()) errs.address = 'Address is required';
-    if (!form.city.trim()) errs.city = 'City is required';
-    if (!form.state.trim()) errs.state = 'State is required';
-    if (!form.pincode.trim() || form.pincode.length < 6) errs.pincode = 'Valid pincode is required';
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+  const handleShippingChange = (e) =>
+    setShipping({ ...shipping, [e.target.name]: e.target.value });
+
+  const handlePaymentChange = (e) =>
+    setPayment({ ...payment, [e.target.name]: e.target.value });
+
+  const handleNext = () => {
+    if (step < 2) setStep(step + 1);
   };
 
-  const validateStep2 = () => {
-    if (paymentMethod === 'card' || paymentMethod === 'debit') {
-      const errs = {};
-      if (!cardInfo.cardNumber || cardInfo.cardNumber.replace(/\s/g, '').length < 16) errs.cardNumber = 'Valid card number required';
-      if (!cardInfo.expiry) errs.expiry = 'Expiry required';
-      if (!cardInfo.cvv || cardInfo.cvv.length < 3) errs.cvv = 'Valid CVV required';
-      setErrors(errs);
-      return Object.keys(errs).length === 0;
+  const handleBack = () => {
+    if (step > 0) setStep(step - 1);
+  };
+
+  const handlePlaceOrder = async () => {
+    setPlacing(true);
+    try {
+      const token = localStorage.getItem("shopez_token");
+      const orderData = {
+        orderItems: cartItems.map((item) => ({
+          name: item.name, qty: item.quantity,
+          image: item.image, price: item.price,
+          product: item._id || item.id,
+        })),
+        shippingAddress: {
+          address: shipping.address, city: shipping.city,
+          postalCode: shipping.zip, country: shipping.country,
+        },
+        paymentMethod: "Card",
+        itemsPrice: cartTotal,
+        shippingPrice: shipping_fee,
+        taxPrice: tax,
+        totalPrice: total,
+      };
+
+      if (token) {
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(orderData),
+        });
+        if (!res.ok) throw new Error("Order failed");
+      }
+    } catch (err) {
+      console.error("Order error:", err);
+    } finally {
+      setPlacing(false);
+      setOrderPlaced(true);
+      clearCart();
     }
-    return true;
   };
 
-  const handlePlaceOrder = () => {
-    if (!validateStep2()) return;
-    const id = 'SHOP-2026-' + Math.floor(10000 + Math.random() * 90000);
-    setOrderId(id);
-    setOrderPlaced(true);
-    clearCart();
-    setTimeout(() => navigate('/'), 4000);
-  };
+  if (orderPlaced) {
+    return (
+      <div className="checkout-success">
+        <div className="checkout-success__icon">
+          <Check size={40} />
+        </div>
+        <h1 className="checkout-success__title">Order Confirmed!</h1>
+        <p className="checkout-success__sub">
+          Thank you, {shipping.firstName || "friend"}! Your order has been placed and is being processed.
+        </p>
+        <div className="checkout-success__actions">
+          <button className="checkout-success__btn" onClick={() => navigate("/")}>
+            <ShoppingBag size={17} /> Continue Shopping
+          </button>
+          <button className="checkout-success__btn checkout-success__btn--outline" onClick={() => navigate("/profile")}>
+            View Orders
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  if (cart.length === 0 && !orderPlaced) return (
-    <div className="co-empty">
-      <h2>🛒 Your cart is empty</h2>
-      <button onClick={() => navigate('/')}>Shop Now</button>
-    </div>
-  );
-
-  if (orderPlaced) return (
-    <div className="co-success">
-      <div className="co-success-icon">🎉</div>
-      <h2>Order Placed Successfully!</h2>
-      <p className="co-order-id">Order ID: <strong>{orderId}</strong></p>
-      <p>Thank you, <strong>{form.fullName}</strong>! Your order is confirmed.</p>
-      <p className="co-redirect">Redirecting to home in 4 seconds...</p>
-      <button onClick={() => navigate('/')}>Go to Home</button>
-    </div>
-  );
+  if (!cartItems || cartItems.length === 0) {
+    navigate("/cart"); return null;
+  }
 
   return (
-    <div className="co-page">
-      <h1 className="co-title">Checkout</h1>
-
-      <div className="co-steps">
-        <div className={`co-step ${step >= 1 ? 'active' : ''}`}>1. Shipping</div>
-        <div className="co-step-line"></div>
-        <div className={`co-step ${step >= 2 ? 'active' : ''}`}>2. Payment</div>
-        <div className="co-step-line"></div>
-        <div className={`co-step ${step >= 3 ? 'active' : ''}`}>3. Review</div>
-      </div>
-
-      <div className="co-layout">
-        <div className="co-main">
-          {/* STEP 1 */}
-          {step === 1 && (
-            <div className="co-card">
-              <h2>📦 Shipping Information</h2>
-              <div className="co-form-grid">
-                {[
-                  { name: 'fullName', label: 'Full Name', placeholder: 'John Doe' },
-                  { name: 'email', label: 'Email', placeholder: 'john@example.com', type: 'email' },
-                  { name: 'phone', label: 'Phone Number', placeholder: '9876543210', type: 'tel' },
-                  { name: 'address', label: 'Address', placeholder: '123 Main Street', full: true },
-                  { name: 'city', label: 'City', placeholder: 'Mumbai' },
-                  { name: 'state', label: 'State', placeholder: 'Maharashtra' },
-                  { name: 'pincode', label: 'Pincode', placeholder: '400001' },
-                ].map(field => (
-                  <div key={field.name} className={`co-field ${field.full ? 'full' : ''}`}>
-                    <label>{field.label}</label>
-                    <input
-                      type={field.type || 'text'}
-                      name={field.name}
-                      placeholder={field.placeholder}
-                      value={form[field.name]}
-                      onChange={handleForm}
-                      className={errors[field.name] ? 'error' : ''}
-                    />
-                    {errors[field.name] && <span className="co-error">{errors[field.name]}</span>}
-                  </div>
-                ))}
-              </div>
-              <button className="co-next-btn" onClick={() => { if (validateStep1()) setStep(2); }}>
-                Continue to Payment →
-              </button>
-            </div>
-          )}
-
-          {/* STEP 2 */}
-          {step === 2 && (
-            <div className="co-card">
-              <h2>💳 Payment Method</h2>
-              <div className="co-payment-options">
-                {[
-                  { value: 'cod', label: '💵 Cash on Delivery' },
-                  { value: 'upi', label: '📱 UPI Payment' },
-                  { value: 'card', label: '💳 Credit Card' },
-                  { value: 'debit', label: '🏧 Debit Card' },
-                ].map(opt => (
-                  <label key={opt.value} className={`co-radio ${paymentMethod === opt.value ? 'selected' : ''}`}>
-                    <input type="radio" name="payment" value={opt.value} checked={paymentMethod === opt.value} onChange={e => setPaymentMethod(e.target.value)} />
-                    {opt.label}
-                  </label>
-                ))}
-              </div>
-
-              {(paymentMethod === 'card' || paymentMethod === 'debit') && (
-                <div className="co-card-fields">
-                  <div className="co-field full">
-                    <label>Card Number</label>
-                    <input name="cardNumber" placeholder="1234 5678 9012 3456" value={cardInfo.cardNumber} onChange={handleCard} maxLength={19} className={errors.cardNumber ? 'error' : ''} />
-                    {errors.cardNumber && <span className="co-error">{errors.cardNumber}</span>}
-                  </div>
-                  <div className="co-field">
-                    <label>Expiry Date</label>
-                    <input name="expiry" placeholder="MM/YY" value={cardInfo.expiry} onChange={handleCard} maxLength={5} className={errors.expiry ? 'error' : ''} />
-                    {errors.expiry && <span className="co-error">{errors.expiry}</span>}
-                  </div>
-                  <div className="co-field">
-                    <label>CVV</label>
-                    <input name="cvv" placeholder="123" value={cardInfo.cvv} onChange={handleCard} maxLength={3} type="password" className={errors.cvv ? 'error' : ''} />
-                    {errors.cvv && <span className="co-error">{errors.cvv}</span>}
-                  </div>
+    <div className="checkout">
+      <div className="checkout__inner">
+        {/* Steps */}
+        <div className="checkout__steps">
+          {steps.map((s, i) => (
+            <React.Fragment key={s}>
+              <div className={`checkout__step ${i === step ? "checkout__step--active" : ""} ${i < step ? "checkout__step--done" : ""}`}>
+                <div className="checkout__step-circle">
+                  {i < step ? <Check size={14} /> : i + 1}
                 </div>
+                <span className="checkout__step-label">{s}</span>
+              </div>
+              {i < steps.length - 1 && (
+                <div className={`checkout__step-line ${i < step ? "checkout__step-line--done" : ""}`} />
               )}
-
-              {paymentMethod === 'upi' && (
-                <div className="co-upi-info">
-                  <p>📱 You will be redirected to your UPI app after placing the order.</p>
-                </div>
-              )}
-
-              <div className="co-btn-row">
-                <button className="co-back-btn" onClick={() => setStep(1)}>← Back</button>
-                <button className="co-next-btn" onClick={() => { if (validateStep2()) setStep(3); }}>Review Order →</button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3 */}
-          {step === 3 && (
-            <div className="co-card">
-              <h2>📋 Review Your Order</h2>
-
-              <div className="co-review-section">
-                <h3>Shipping To:</h3>
-                <p>{form.fullName} • {form.phone}</p>
-                <p>{form.address}, {form.city}, {form.state} - {form.pincode}</p>
-                <p>{form.email}</p>
-              </div>
-
-              <div className="co-review-section">
-                <h3>Payment:</h3>
-                <p>{paymentMethod === 'cod' ? '💵 Cash on Delivery' : paymentMethod === 'upi' ? '📱 UPI' : paymentMethod === 'card' ? '💳 Credit Card' : '🏧 Debit Card'}</p>
-              </div>
-
-              <div className="co-review-section">
-                <h3>Items ({cart.length}):</h3>
-                {cart.map(item => (
-                  <div key={item.id} className="co-review-item">
-                    <img src={item.image} alt={item.name} />
-                    <div>
-                      <p className="co-review-name">{item.name}</p>
-                      <p className="co-review-qty">Qty: {item.quantity} × ₹{item.price.toLocaleString()}</p>
-                    </div>
-                    <span className="co-review-total">₹{(item.price * item.quantity).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="co-btn-row">
-                <button className="co-back-btn" onClick={() => setStep(2)}>← Back</button>
-                <button className="co-place-btn" onClick={handlePlaceOrder}>Place Order 🎉</button>
-              </div>
-            </div>
-          )}
+            </React.Fragment>
+          ))}
         </div>
 
-        {/* ORDER SUMMARY SIDEBAR */}
-        <div className="co-summary">
-          <h2>Order Summary</h2>
-          {cart.map(item => (
-            <div key={item.id} className="co-sum-item">
-              <span className="co-sum-name">{item.name} ×{item.quantity}</span>
-              <span>₹{(item.price * item.quantity).toLocaleString()}</span>
+        <div className="checkout__layout">
+          {/* Form */}
+          <div className="checkout__form-wrap">
+            {/* Step 0: Shipping */}
+            {step === 0 && (
+              <div className="checkout__form">
+                <div className="checkout__form-header">
+                  <MapPin size={20} color="#7c3aed" />
+                  <h2 className="checkout__form-title">Shipping Address</h2>
+                </div>
+                <div className="checkout__grid-2">
+                  <div className="checkout__field">
+                    <label>First Name</label>
+                    <input name="firstName" value={shipping.firstName} onChange={handleShippingChange} placeholder="John" />
+                  </div>
+                  <div className="checkout__field">
+                    <label>Last Name</label>
+                    <input name="lastName" value={shipping.lastName} onChange={handleShippingChange} placeholder="Doe" />
+                  </div>
+                </div>
+                <div className="checkout__grid-2">
+                  <div className="checkout__field">
+                    <label>Email</label>
+                    <input name="email" type="email" value={shipping.email} onChange={handleShippingChange} placeholder="john@example.com" />
+                  </div>
+                  <div className="checkout__field">
+                    <label>Phone</label>
+                    <input name="phone" value={shipping.phone} onChange={handleShippingChange} placeholder="+1 234 567 8900" />
+                  </div>
+                </div>
+                <div className="checkout__field">
+                  <label>Street Address</label>
+                  <input name="address" value={shipping.address} onChange={handleShippingChange} placeholder="123 Main Street, Apt 4B" />
+                </div>
+                <div className="checkout__grid-3">
+                  <div className="checkout__field">
+                    <label>City</label>
+                    <input name="city" value={shipping.city} onChange={handleShippingChange} placeholder="New York" />
+                  </div>
+                  <div className="checkout__field">
+                    <label>State</label>
+                    <input name="state" value={shipping.state} onChange={handleShippingChange} placeholder="NY" />
+                  </div>
+                  <div className="checkout__field">
+                    <label>ZIP Code</label>
+                    <input name="zip" value={shipping.zip} onChange={handleShippingChange} placeholder="10001" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 1: Payment */}
+            {step === 1 && (
+              <div className="checkout__form">
+                <div className="checkout__form-header">
+                  <CreditCard size={20} color="#7c3aed" />
+                  <h2 className="checkout__form-title">Payment Details</h2>
+                </div>
+                <div className="checkout__card-preview">
+                  <div className="checkout__card-chip" />
+                  <p className="checkout__card-number">
+                    {payment.cardNumber || "•••• •••• •••• ••••"}
+                  </p>
+                  <div className="checkout__card-bottom">
+                    <div>
+                      <p className="checkout__card-label">Card Holder</p>
+                      <p className="checkout__card-value">{payment.cardName || "YOUR NAME"}</p>
+                    </div>
+                    <div>
+                      <p className="checkout__card-label">Expires</p>
+                      <p className="checkout__card-value">{payment.expiry || "MM/YY"}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="checkout__field">
+                  <label>Card Number</label>
+                  <input
+                    name="cardNumber" value={payment.cardNumber}
+                    onChange={handlePaymentChange}
+                    placeholder="1234 5678 9012 3456" maxLength={19}
+                  />
+                </div>
+                <div className="checkout__field">
+                  <label>Cardholder Name</label>
+                  <input name="cardName" value={payment.cardName} onChange={handlePaymentChange} placeholder="John Doe" />
+                </div>
+                <div className="checkout__grid-2">
+                  <div className="checkout__field">
+                    <label>Expiry Date</label>
+                    <input name="expiry" value={payment.expiry} onChange={handlePaymentChange} placeholder="MM/YY" maxLength={5} />
+                  </div>
+                  <div className="checkout__field">
+                    <label>CVV</label>
+                    <div className="checkout__cvv-wrap">
+                      <input
+                        name="cvv" type={payment.showCvv ? "text" : "password"}
+                        value={payment.cvv} onChange={handlePaymentChange}
+                        placeholder="•••" maxLength={4}
+                      />
+                      <button type="button" className="checkout__cvv-toggle"
+                        onClick={() => setPayment({ ...payment, showCvv: !payment.showCvv })}>
+                        <Eye size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Review */}
+            {step === 2 && (
+              <div className="checkout__form">
+                <div className="checkout__form-header">
+                  <Eye size={20} color="#7c3aed" />
+                  <h2 className="checkout__form-title">Review Your Order</h2>
+                </div>
+                <div className="checkout__review-items">
+                  {cartItems.map((item) => (
+                    <div key={item._id || item.id} className="checkout__review-item">
+                      <img
+                        src={item.image || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80&h=80&fit=crop"}
+                        alt={item.name}
+                        onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=80&h=80&fit=crop"; }}
+                      />
+                      <div className="checkout__review-item-info">
+                        <p className="checkout__review-item-name">{item.name}</p>
+                        <p className="checkout__review-item-qty">Qty: {item.quantity}</p>
+                      </div>
+                      <p className="checkout__review-item-price">
+                        ${(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="checkout__review-address">
+                  <h4>Shipping To</h4>
+                  <p>{shipping.firstName} {shipping.lastName}</p>
+                  <p>{shipping.address}</p>
+                  <p>{shipping.city}, {shipping.state} {shipping.zip}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="checkout__nav">
+              {step > 0 && (
+                <button className="checkout__nav-back" onClick={handleBack}>
+                  Back
+                </button>
+              )}
+              {step < 2 ? (
+                <button className="checkout__nav-next" onClick={handleNext}>
+                  Continue <ChevronRight size={16} />
+                </button>
+              ) : (
+                <button
+                  className="checkout__nav-place"
+                  onClick={handlePlaceOrder}
+                  disabled={placing}
+                >
+                  {placing ? (
+                    <><div className="checkout__spinner" /> Processing...</>
+                  ) : (
+                    <><Zap size={17} /> Place Order — ${total.toFixed(2)}</>
+                  )}
+                </button>
+              )}
             </div>
-          ))}
-          <div className="co-sum-row"><span>Subtotal</span><span>₹{subtotal.toLocaleString()}</span></div>
-          <div className="co-sum-row"><span>Tax (5%)</span><span>₹{tax.toLocaleString()}</span></div>
-          <div className="co-sum-row"><span>Shipping</span><span className={shipping === 0 ? 'free' : ''}>{shipping === 0 ? 'FREE' : `₹${shipping}`}</span></div>
-          <div className="co-sum-total"><span>Total</span><span>₹{total.toLocaleString()}</span></div>
+          </div>
+
+          {/* Summary */}
+          <div className="checkout__summary">
+            <h3 className="checkout__summary-title">Order Summary</h3>
+            <div className="checkout__summary-items">
+              {cartItems.slice(0, 3).map((item) => (
+                <div key={item._id || item.id} className="checkout__summary-item">
+                  <span className="checkout__summary-item-name">
+                    {item.name.length > 28 ? item.name.slice(0, 28) + "…" : item.name}
+                  </span>
+                  <span className="checkout__summary-item-price">
+                    ${(item.price * item.quantity).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+              {cartItems.length > 3 && (
+                <p className="checkout__summary-more">+{cartItems.length - 3} more items</p>
+              )}
+            </div>
+            <div className="checkout__summary-divider" />
+            <div className="checkout__summary-rows">
+              <div className="checkout__summary-row">
+                <span>Subtotal</span><span>${cartTotal.toFixed(2)}</span>
+              </div>
+              <div className="checkout__summary-row">
+                <span>Shipping</span>
+                <span className={shipping_fee === 0 ? "checkout__free" : ""}>
+                  {shipping_fee === 0 ? "FREE" : `$${shipping_fee.toFixed(2)}`}
+                </span>
+              </div>
+              <div className="checkout__summary-row">
+                <span>Tax</span><span>${tax.toFixed(2)}</span>
+              </div>
+            </div>
+            <div className="checkout__summary-divider" />
+            <div className="checkout__summary-total">
+              <span>Total</span>
+              <span className="checkout__summary-total-amt">${total.toFixed(2)}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

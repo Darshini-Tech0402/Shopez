@@ -1,99 +1,180 @@
-import React, { useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { CartContext } from '../context/CartContext';
-import './Cart.css';
+import React from "react";
+import { Link } from "react-router-dom";
+import { useCart } from "../context/CartContext";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from "lucide-react";
+import "./Cart.css";
+
+const CartItem = ({ item }) => {
+  const { updateQuantity, removeFromCart } = useCart();
+
+  const image =
+    item.image ||
+    (item.images && item.images[0]) ||
+    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop";
+
+  return (
+    <div className="cart-item">
+      <div className="cart-item__img-wrap">
+        <img
+          src={image}
+          alt={item.name}
+          className="cart-item__img"
+          onError={(e) => {
+            e.target.src =
+              "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop";
+          }}
+        />
+      </div>
+
+      <div className="cart-item__details">
+        <Link
+          to={`/product/${item._id || item.id}`}
+          className="cart-item__name"
+        >
+          {item.name}
+        </Link>
+        {item.category && (
+          <span className="cart-item__category">{item.category}</span>
+        )}
+        <p className="cart-item__unit-price">${item.price?.toFixed(2)} each</p>
+      </div>
+
+      <div className="cart-item__qty-wrap">
+        <button
+          className="cart-item__qty-btn"
+          onClick={() =>
+            updateQuantity(item._id || item.id, item.quantity - 1)
+          }
+          aria-label="Decrease"
+        >
+          <Minus size={13} />
+        </button>
+        <span className="cart-item__qty">{item.quantity}</span>
+        <button
+          className="cart-item__qty-btn"
+          onClick={() =>
+            updateQuantity(item._id || item.id, item.quantity + 1)
+          }
+          aria-label="Increase"
+        >
+          <Plus size={13} />
+        </button>
+      </div>
+
+      <div className="cart-item__right">
+        <p className="cart-item__total">
+          ${(item.price * item.quantity).toFixed(2)}
+        </p>
+        <button
+          className="cart-item__remove"
+          onClick={() => removeFromCart(item._id || item.id)}
+          aria-label="Remove item"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const CartSummary = ({ cartItems }) => {
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+  const shipping = subtotal > 50 ? 0 : 9.99;
+  const tax = subtotal * 0.08;
+  const total = subtotal + shipping + tax;
+
+  return (
+    <div className="cart-summary">
+      <h3 className="cart-summary__title">Order Summary</h3>
+
+      <div className="cart-summary__rows">
+        <div className="cart-summary__row">
+          <span>Subtotal</span>
+          <span>${subtotal.toFixed(2)}</span>
+        </div>
+        <div className="cart-summary__row">
+          <span>Shipping</span>
+          <span className={shipping === 0 ? "cart-summary__free" : ""}>
+            {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
+          </span>
+        </div>
+        <div className="cart-summary__row">
+          <span>Tax (8%)</span>
+          <span>${tax.toFixed(2)}</span>
+        </div>
+        {subtotal < 50 && (
+          <p className="cart-summary__shipping-note">
+            Add ${(50 - subtotal).toFixed(2)} more for free shipping
+          </p>
+        )}
+      </div>
+
+      <div className="cart-summary__divider" />
+
+      <div className="cart-summary__total-row">
+        <span>Total</span>
+        <span className="cart-summary__total-amount">${total.toFixed(2)}</span>
+      </div>
+
+      <Link to="/checkout" className="cart-summary__checkout-btn">
+        <ShoppingBag size={17} />
+        Proceed to Checkout
+        <ArrowRight size={16} />
+      </Link>
+
+      <Link to="/category/all" className="cart-summary__continue">
+        Continue Shopping
+      </Link>
+    </div>
+  );
+};
 
 const Cart = () => {
-  const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useContext(CartContext);
-  const navigate = useNavigate();
+  const { cartItems, clearCart } = useCart();
 
-  if (cart.length === 0) {
+  if (!cartItems || cartItems.length === 0) {
     return (
-      <div className="cart-page">
-        <div className="empty-cart">
-          <h2>🛒 Your Cart is Empty!</h2>
-          <p>Start shopping to add items</p>
-          <button onClick={() => navigate('/')} className="continue-shopping-btn">
-            ← Continue Shopping
-          </button>
+      <div className="cart-empty">
+        <div className="cart-empty__icon">
+          <ShoppingBag size={48} />
         </div>
+        <h2 className="cart-empty__title">Your cart is empty</h2>
+        <p className="cart-empty__sub">
+          Looks like you haven't added anything yet.
+        </p>
+        <Link to="/category/all" className="cart-empty__btn">
+          Start Shopping
+          <ArrowRight size={16} />
+        </Link>
       </div>
     );
   }
 
-  const taxAmount = Math.round(totalPrice * 0.05);
-  const finalAmount = totalPrice + taxAmount;
-
   return (
     <div className="cart-page">
-      <h1>🛒 Shopping Cart</h1>
+      <div className="cart-page__header">
+        <h1 className="cart-page__title">
+          Your Cart{" "}
+          <span className="cart-page__count">
+            ({cartItems.length} item{cartItems.length !== 1 ? "s" : ""})
+          </span>
+        </h1>
+        <button className="cart-page__clear" onClick={clearCart}>
+          <Trash2 size={15} />
+          Clear All
+        </button>
+      </div>
 
-      <div className="cart-container">
-        <div className="cart-items-section">
-          <div className="cart-header">
-            <span>Product</span>
-            <span>Price</span>
-            <span>Qty</span>
-            <span>Total</span>
-            <span>Action</span>
-          </div>
-
-          {cart.map((item, idx) => (
-            <div key={idx} className="cart-item">
-              <div className="item-image">
-                <img src={item.image} alt={item.name} />
-              </div>
-              <div className="item-info">
-                <h4>{item.name}</h4>
-              </div>
-              <div className="item-price">
-                ₹{item.price.toLocaleString()}
-              </div>
-              <div className="item-quantity">
-                <button onClick={() => updateQuantity(idx, item.quantity - 1)}>−</button>
-                <input type="number" value={item.quantity} readOnly />
-                <button onClick={() => updateQuantity(idx, item.quantity + 1)}>+</button>
-              </div>
-              <div className="item-total">
-                ₹{(item.price * item.quantity).toLocaleString()}
-              </div>
-              <button className="remove-btn" onClick={() => removeFromCart(idx)}>🗑️</button>
-            </div>
+      <div className="cart-page__layout">
+        <div className="cart-page__items">
+          {cartItems.map((item) => (
+            <CartItem key={item._id || item.id} item={item} />
           ))}
         </div>
-
-        <div className="cart-summary-section">
-          <div className="summary">
-            <h3>Order Summary</h3>
-            <div className="summary-row">
-              <span>Subtotal:</span>
-              <span>₹{totalPrice.toLocaleString()}</span>
-            </div>
-            <div className="summary-row">
-              <span>Tax (5%):</span>
-              <span>₹{taxAmount.toLocaleString()}</span>
-            </div>
-            <div className="summary-row">
-              <span>Shipping:</span>
-              <span className="free">FREE</span>
-            </div>
-            <div className="summary-divider"></div>
-            <div className="summary-row total">
-              <span>Total:</span>
-              <span>₹{finalAmount.toLocaleString()}</span>
-            </div>
-
-            <button className="checkout-btn" onClick={() => navigate('/checkout')}>
-              🚀 Checkout
-            </button>
-            <button className="continue-btn" onClick={() => navigate('/')}>
-              ← Shopping
-            </button>
-            <button className="clear-cart-btn" onClick={clearCart}>
-              Clear Cart
-            </button>
-          </div>
-        </div>
+        <CartSummary cartItems={cartItems} />
       </div>
     </div>
   );

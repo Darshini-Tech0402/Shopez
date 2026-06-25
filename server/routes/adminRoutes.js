@@ -1,38 +1,21 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const adminController = require('../controllers/adminController');
+const {
+  getDashboardStats,
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser,
+} = require("../controllers/adminController");
+const { protect, admin } = require("../middleware/auth");
 
-// Get all users (Admin only)
-router.get('/users', adminController.getAllUsers);
+// All admin routes require auth + admin role
+router.use(protect, admin);
 
-// Get user by ID
-router.get('/users/:userId', adminController.getUserById);
-
-// Delete user (Admin only)
-router.delete('/users/:userId', adminController.deleteUser);
-
-// Get all products
-router.get('/products', adminController.getAllProducts);
-
-// Get sales statistics
-router.get('/stats/sales', adminController.getSalesStats);
-
-// Get revenue analytics
-router.get('/stats/revenue', adminController.getRevenueStats);
-
-// Get category-wise sales
-router.get('/stats/category', adminController.getCategoryStats);
-
-// Get total orders count
-router.get('/stats/orders', adminController.getOrdersStats);
-
-// Approve order (Admin only)
-router.put('/orders/:orderId/approve', adminController.approveOrder);
-
-// Reject order (Admin only)
-router.put('/orders/:orderId/reject', adminController.rejectOrder);
-
-// Get dashboard data (Admin only)
-router.get('/dashboard', adminController.getDashboardData);
+router.get("/stats", getDashboardStats);
+router.get("/users", getAllUsers);
+router.get("/users/:id", getUserById);
+router.put("/users/:id", updateUser);
+router.delete("/users/:id", deleteUser);
 
 module.exports = router;

@@ -1,2 +1,107 @@
-/* Uses same styles as Login.css — just import Login.css here */
-@import './Login.css';
+/* Signup uses auth classes from Login.css */
+
+/* Password strength */
+.auth__strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth__strength-bars {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.auth__strength-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+
+.auth__strength-bar--active {
+  background: #f87171;
+}
+
+.auth__strength-bar--medium {
+  background: #fbbf24;
+}
+
+.auth__strength-bar--strong {
+  background: #14f195;
+}
+
+.auth__strength-label {
+  font-family: "Inter", sans-serif;
+  font-size: 0.75rem;
+  color: #64748b;
+  width: 40px;
+  text-align: right;
+}
+
+/* Perks */
+.auth__perks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.auth__perk {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth__perk-dot {
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #7c3aed, #00e5ff);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.auth__perk span {
+  font-family: "Inter", sans-serif;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.auth__terms {
+  font-family: "Inter", sans-serif;
+  font-size: 0.78rem;
+  color: #475569;
+  text-align: center;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.auth__terms a {
+  color: #7c3aed;
+  text-decoration: none;
+}
+
+.auth__terms a:hover {
+  color: #a855f7;
+}
+
+/* Make right panel scrollable for long signup form */
+.auth__right {
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+  .auth__left {
+    display: none;
+  }
+  .auth__right {
+    padding: 88px 24px 40px;
+    max-height: none;
+  }
+}

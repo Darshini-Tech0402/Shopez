@@ -1,81 +1,84 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+
+const orderItemSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  qty: { type: Number, required: true },
+  image: { type: String, default: "" },
+  price: { type: Number, required: true },
+  product: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product",
+    required: true,
+  },
+});
 
 const orderSchema = new mongoose.Schema(
   {
-    orderId: {
-      type: String,
-      unique: true,
-      required: true
-    },
-    userId: {
+    user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+      ref: "User",
+      required: true,
     },
-    items: [
-      {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Product',
-          required: true
-        },
-        productName: String,
-        price: Number,
-        quantity: {
-          type: Number,
-          required: true,
-          min: 1
-        },
-        totalPrice: Number
-      }
-    ],
-    totalAmount: {
-      type: Number,
-      required: true
-    },
-    discount: {
-      type: Number,
-      default: 0
-    },
-    finalAmount: {
-      type: Number,
-      required: true
+    orderItems: {
+      type: [orderItemSchema],
+      required: true,
     },
     shippingAddress: {
-      street: String,
-      city: String,
-      state: String,
-      pincode: String,
-      phone: String
-    },
-    status: {
-      type: String,
-      enum: ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'],
-      default: 'Pending'
+      address: { type: String, required: true },
+      city: { type: String, required: true },
+      postalCode: { type: String, required: true },
+      country: { type: String, required: true },
     },
     paymentMethod: {
       type: String,
-      enum: ['Card', 'UPI', 'NetBanking', 'Wallet'],
-      default: 'Card'
+      required: true,
+      default: "Card",
     },
-    paymentStatus: {
+    paymentResult: {
+      id: String,
+      status: String,
+      update_time: String,
+      email_address: String,
+    },
+    itemsPrice: {
+      type: Number,
+      required: true,
+      default: 0.0,
+    },
+    taxPrice: {
+      type: Number,
+      required: true,
+      default: 0.0,
+    },
+    shippingPrice: {
+      type: Number,
+      required: true,
+      default: 0.0,
+    },
+    totalPrice: {
+      type: Number,
+      required: true,
+      default: 0.0,
+    },
+    isPaid: {
+      type: Boolean,
+      default: false,
+    },
+    paidAt: Date,
+    isDelivered: {
+      type: Boolean,
+      default: false,
+    },
+    deliveredAt: Date,
+    status: {
       type: String,
-      enum: ['Paid', 'Pending', 'Failed'],
-      default: 'Pending'
+      enum: ["Processing", "Shipped", "Delivered", "Cancelled"],
+      default: "Processing",
     },
-    orderDate: {
-      type: Date,
-      default: Date.now
-    },
-    deliveryDate: Date,
-    trackingNumber: String,
-    notes: String,
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model('Order', orderSchema);
+module.exports = mongoose.model("Order", orderSchema);

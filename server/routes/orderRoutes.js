@@ -1,29 +1,25 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const orderController = require('../controllers/orderController');
+const {
+  createOrder,
+  getMyOrders,
+  getOrderById,
+  updateOrderToPaid,
+  updateOrderToDelivered,
+  getAllOrders,
+  updateOrderStatus,
+} = require("../controllers/orderController");
+const { protect, admin } = require("../middleware/auth");
 
-// Place new order
-router.post('/place-order', orderController.placeOrder);
+// Protected routes
+router.post("/", protect, createOrder);
+router.get("/myorders", protect, getMyOrders);
+router.get("/:id", protect, getOrderById);
+router.put("/:id/pay", protect, updateOrderToPaid);
 
-// Get all orders of current user
-router.get('/my-orders', orderController.getUserOrders);
-
-// Get single order by ID
-router.get('/:orderId', orderController.getOrderById);
-
-// Update order status (Admin only)
-router.put('/update-status/:orderId', orderController.updateOrderStatus);
-
-// Cancel order
-router.put('/cancel/:orderId', orderController.cancelOrder);
-
-// Get all orders (Admin only)
-router.get('/', orderController.getAllOrders);
-
-// Download invoice
-router.get('/:orderId/invoice', orderController.downloadInvoice);
-
-// Track order
-router.get('/:orderId/track', orderController.trackOrder);
+// Admin routes
+router.get("/", protect, admin, getAllOrders);
+router.put("/:id/deliver", protect, admin, updateOrderToDelivered);
+router.put("/:id/status", protect, admin, updateOrderStatus);
 
 module.exports = router;

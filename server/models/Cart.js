@@ -1,59 +1,46 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+
+const cartItemSchema = new mongoose.Schema({
+  product: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product",
+    required: true,
+  },
+  name: { type: String, required: true },
+  image: { type: String, default: "" },
+  price: { type: Number, required: true },
+  quantity: { type: Number, required: true, min: 1, default: 1 },
+});
 
 const cartSchema = new mongoose.Schema(
   {
-    userId: {
+    user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
-      unique: true
+      unique: true,
     },
-    items: [
-      {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Product',
-          required: true
-        },
-        productName: String,
-        price: Number,
-        quantity: {
-          type: Number,
-          required: true,
-          min: 1,
-          default: 1
-        },
-        image: String,
-        totalPrice: Number
-      }
-    ],
-    subtotal: {
+    items: {
+      type: [cartItemSchema],
+      default: [],
+    },
+    totalPrice: {
       type: Number,
-      default: 0
+      default: 0,
     },
-    discount: {
-      type: Number,
-      default: 0
-    },
-    tax: {
-      type: Number,
-      default: 0
-    },
-    totalAmount: {
-      type: Number,
-      default: 0
-    },
-    couponCode: String,
-    updatedAt: {
-      type: Date,
-      default: Date.now
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-module.exports = mongoose.model('Cart', cartSchema);
+// Auto-calculate total before saving
+cartSchema.pre("save", function (next) {
+  this.totalPrice = this.items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+  next();
+});
+
+module.exports = mongoose.model("Cart", cartSchema);

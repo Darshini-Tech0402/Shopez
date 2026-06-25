@@ -1,15 +1,19 @@
-// Check if user is ADMIN
-const roleCheck = (req, res, next) => {
-  try {
-    // Check if user has ADMIN role
-    if (req.user.role !== 'ADMIN') {
-      return res.status(403).json({ message: 'Access denied - Admin only' });
+const roleCheck = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const userRole = req.user.isAdmin ? "admin" : "user";
+
+    if (!roles.includes(userRole)) {
+      return res.status(403).json({
+        message: `Role '${userRole}' is not authorized to access this route`,
+      });
     }
 
     next();
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
+  };
 };
 
 module.exports = roleCheck;

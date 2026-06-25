@@ -1,204 +1,176 @@
-const Order = require('../models/Order');
-const Cart = require('../models/Cart');
-const Product = require('../models/Product');
-const User = require('../models/User');
+const Order = require("../models/Order");
+const Product = require("../models/Product");
 
-// Place new order
-exports.placeOrder = async (req, res) => {
+// @desc    Create new order
+// @route   POST /api/orders
+// @access  Private
+const createOrder = async (req, res) => {
   try {
-    const { shippingAddress, paymentMethod } = req.body;
-    const userId = req.user.userId;
-
-    // Get user's cart
-    let cart = await Cart.findOne({ userId });
-    if (!cart || cart.items.length === 0) {
-      return res.status(400).json({ message: 'Cart is empty' });
-    }
-
-    // Get user details
-    const user = await User.findById(userId);
-    if (user.balance < cart.totalAmount) {
-      return res.status(400).json({ message: 'Insufficient balance' });
-    }
-
-    // Create order
-    const orderId = 'ORD' + Date.now();
-    const order = new Order({
-      orderId,
-      userId,
-      items: cart.items,
-      totalAmount: cart.subtotal,
-      discount: cart.discount,
-      finalAmount: cart.totalAmount,
+    const {
+      orderItems,
       shippingAddress,
       paymentMethod,
-      status: 'Pending',
-      paymentStatus: 'Paid'
-    });
+      itemsPrice,
+      taxPrice,
+      shippingPrice,
+      totalPrice,
+    } = req.body;
 
-    // Deduct from user balance
-    user.balance -= cart.totalAmount;
-    await user.save();
-
-    // Reduce product stock
-    for (let item of cart.items) {
-      await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: -item.quantity } }
-      );
+    if (!orderItems || orderItems.length === 0) {
+      return res.status(400).json({ message: "No order items provided" });
     }
 
-    // Clear cart
-    cart.items = [];
-    cart.totalAmount = 0;
-    cart.subtotal = 0;
-    await cart.save();
-
-    await order.save();
-
-    res.status(201).json({
-      message: 'Order placed successfully',
-      order
+    const order = await Order.create({
+      user: req.user._id,
+      orderItems,
+      shippingAddress,
+      paymentMethod: paymentMethod || "Card",
+      itemsPrice,
+      taxPrice,
+      shippingPrice,
+      totalPrice,
     });
+
+    // Update stock
+    for (const item of orderItems) {
+      if (item.product) {
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: { countInStock: -item.qty },
+        });
+      }
+    }
+
+    res.status(201).json(order);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Create order error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get all orders of current user
-exports.getUserOrders = async (req, res) => {
+// @desc    Get logged in user orders
+// @route   GET /api/orders/myorders
+// @access  Private
+const getMyOrders = async (req, res) => {
   try {
-    const userId = req.user.userId;
-
-    const orders = await Order.find({ userId })
-      .populate('items.productId')
+    const orders = await Order.find({ user: req.user._id })
       .sort({ createdAt: -1 });
-
-    res.status(200).json({ orders });
+    res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get single order by ID
-exports.getOrderById = async (req, res) => {
+// @desc    Get order by ID
+// @route   GET /api/orders/:id
+// @access  Private
+const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId })
-      .populate('items.productId')
-      .populate('userId');
+    const order = await Order.findById(req.params.id)
+      .populate("user", "name email");
 
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
 
-    res.status(200).json({ order });
+    if (
+      order.user._id.toString() !== req.user._id.toString() &&
+      !req.user.isAdmin
+    ) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    res.json(order);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Update order status (Admin only)
-exports.updateOrderStatus = async (req, res) => {
+// @desc    Update order to paid
+// @route   PUT /api/orders/:id/pay
+// @access  Private
+const updateOrderToPaid = async (req, res) => {
   try {
-    const { status } = req.body;
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
 
-    const order = await Order.findOneAndUpdate(
-      { orderId: req.params.orderId },
-      { status },
-      { new: true }
-    );
+    order.isPaid = true;
+    order.paidAt = Date.now();
+    order.status = "Processing";
+    order.paymentResult = {
+      id: req.body.id,
+      status: req.body.status,
+      update_time: req.body.update_time,
+      email_address: req.body.payer?.email_address,
+    };
 
-    res.status(200).json({
-      message: 'Order status updated',
-      order
-    });
+    const updatedOrder = await order.save();
+    res.json(updatedOrder);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Cancel order
-exports.cancelOrder = async (req, res) => {
+// @desc    Update order to delivered
+// @route   PUT /api/orders/:id/deliver
+// @access  Private/Admin
+const updateOrderToDelivered = async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
-
-    if (order.status !== 'Pending') {
-      return res.status(400).json({ message: 'Cannot cancel shipped order' });
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
     }
 
-    // Refund user
-    const user = await User.findById(order.userId);
-    user.balance += order.finalAmount;
-    await user.save();
+    order.isDelivered = true;
+    order.deliveredAt = Date.now();
+    order.status = "Delivered";
 
-    // Restore product stock
-    for (let item of order.items) {
-      await Product.findByIdAndUpdate(
-        item.productId,
-        { $inc: { stock: item.quantity } }
-      );
-    }
-
-    order.status = 'Cancelled';
-    await order.save();
-
-    res.status(200).json({
-      message: 'Order cancelled successfully',
-      order
-    });
+    const updatedOrder = await order.save();
+    res.json(updatedOrder);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Get all orders (Admin only)
-exports.getAllOrders = async (req, res) => {
+// @desc    Get all orders (Admin)
+// @route   GET /api/orders
+// @access  Private/Admin
+const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate('userId')
-      .populate('items.productId')
+    const orders = await Order.find({})
+      .populate("user", "name email")
       .sort({ createdAt: -1 });
-
-    res.status(200).json({ orders });
+    res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Download invoice
-exports.downloadInvoice = async (req, res) => {
+// @desc    Update order status (Admin)
+// @route   PUT /api/orders/:id/status
+// @access  Private/Admin
+const updateOrderStatus = async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
-
+    const order = await Order.findById(req.params.id);
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: "Order not found" });
     }
 
-    res.status(200).json({
-      message: 'Invoice data',
-      order
-    });
+    order.status = req.body.status || order.status;
+    const updatedOrder = await order.save();
+    res.json(updatedOrder);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Track order
-exports.trackOrder = async (req, res) => {
-  try {
-    const order = await Order.findOne({ orderId: req.params.orderId });
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
-    res.status(200).json({
-      orderId: order.orderId,
-      status: order.status,
-      trackingNumber: order.trackingNumber,
-      deliveryDate: order.deliveryDate
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
+module.exports = {
+  createOrder,
+  getMyOrders,
+  getOrderById,
+  updateOrderToPaid,
+  updateOrderToDelivered,
+  getAllOrders,
+  updateOrderStatus,
 };
